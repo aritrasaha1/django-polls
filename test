@@ -1,17 +1,32 @@
 def spotify_callback(request):
     code = request.GET.get('code')
     error = request.GET.get('error')
-    state = request.GET.get('state')
-
+    
     if error:
-        messages.error(request, _("Error during authentication: ") + error)
-        return redirect('wrap_app:home')
+        return handle_error(request, error)
 
     if not code:
-        messages.error(request, _("No code provided in Spotify callback."))
-        return redirect('wrap_app:home')
+        return handle_missing_code(request)
 
-    # Exchange code for access token
+    access_token = exchange_code_for_token(code)
+    if not access_token:
+        return handle_error(request, _("Failed to authenticate with Spotify."))
+
+    user_info = fetch_user_info(access_token)
+    if not user_info:
+        return handle_error(request, _("Failed to fetch user data from Spotify."))
+    
+    # Process and save user info...
+    
+def handle_error(request, error_message):
+    messages.error(request, error_message)
+    return redirect('wrap_app:home')
+
+def handle_missing_code(request):
+    messages.error(request, _("No code provided in Spotify callback."))
+    return redirect('wrap_app:home')
+
+def exchange_code_for_token(code):
     payload = {
         'grant_type': 'authorization_code',
         'code': code,
@@ -26,23 +41,17 @@ def spotify_callback(request):
     try:
         response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
         response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error exchanging code for token: {e}")
-        messages.error(request, _("Failed to authenticate with Spotify."))
-        return redirect('wrap_app:home')
+        return response.json().get("access_token")
+    except requests.exceptions.RequestException:
+        return None
 
-    # Fetch user information from Spotify
+def fetch_user_info(access_token):
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+    }
     try:
-        headers = {
-            'Authorization': f'Bearer {response.json().get("access_token")}',
-        }
-        user_info_response = requests.get("https://api.spotify.com/v1/me", headers=headers)
-        user_info_response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching user info: {e}")
-        messages.error(request, _("Failed to fetch user data from Spotify."))
-        return redirect('wrap_app:home')
-
-    # Handle user info logic
-    user_info = user_info_response.json()
-    # process and save user info...
+        response = requests.get("https://api.spotify.com/v1/me", headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException:
+        return None
