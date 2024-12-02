@@ -1,32 +1,42 @@
-# Subject (TeamProgress)
-class TeamProgress:
-    def __init__(self):
-        self._observers = []
+# Abstract class for Progress (StandUp, Commit, UserStory)
+class Progress:
+    def display_progress(self):
+        pass
 
-    def add_observer(self, observer):
-        self._observers.append(observer)
+# Concrete class for StandUp Progress
+class StandUpProgress(Progress):
+    def display_progress(self):
+        return "Today's Stand-Up: Discussed blockers and progress."
 
-    def remove_observer(self, observer):
-        self._observers.remove(observer)
+# Concrete class for Commit Progress
+class CommitProgress(Progress):
+    def display_progress(self):
+        return "New Commit: Fixed bug in login module."
 
-    def notify_observers(self, commit_message):
-        for observer in self._observers:
-            observer.update(commit_message)
+# Concrete class for UserStory Progress
+class UserStoryProgress(Progress):
+    def display_progress(self):
+        return "User Story: Task #5 is 50% complete."
 
-# Observer (TA)
-class TA:
-    def update(self, commit_message):
-        print(f"New commit update: {commit_message}")
+# Factory Method to create progress instances
+class ProgressFactory:
+    def create_progress(self, progress_type):
+        if progress_type == "standup":
+            return StandUpProgress()
+        elif progress_type == "commit":
+            return CommitProgress()
+        elif progress_type == "userstory":
+            return UserStoryProgress()
 
 # Client code
-team_progress = TeamProgress()
+progress_factory = ProgressFactory()
 
-# TAs subscribe to the progress updates
-ta1 = TA()
-ta2 = TA()
+# Create and display different types of progress
+standup_progress = progress_factory.create_progress("standup")
+print(standup_progress.display_progress())
 
-team_progress.add_observer(ta1)
-team_progress.add_observer(ta2)
+commit_progress = progress_factory.create_progress("commit")
+print(commit_progress.display_progress())
 
-# Notify observers of a new commit
-team_progress.notify_observers("Commit #123: Finished implementing login functionality")
+userstory_progress = progress_factory.create_progress("userstory")
+print(userstory_progress.display_progress())
